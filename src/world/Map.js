@@ -1,5 +1,6 @@
 import { Terrain } from './Terrain.js';
 import { Buildings } from './Buildings.js';
+import { Trees } from './Trees.js';
 import { Sky } from './Sky.js';
 
 export const ZONES = [
@@ -19,6 +20,7 @@ export class GameMap {
   constructor() {
     this.terrain = new Terrain();
     this.buildings = new Buildings(this.terrain, ZONES);
+    this.trees = new Trees(this.terrain, ZONES);
     this.sky = new Sky();
   }
 
@@ -40,6 +42,7 @@ export class GameMap {
   addToScene(scene) {
     this.terrain.addToScene(scene);
     this.buildings.addToScene(scene);
+    this.trees.addToScene(scene);
     this.sky.addToScene(scene);
   }
 }

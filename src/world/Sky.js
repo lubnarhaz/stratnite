@@ -4,12 +4,13 @@ export class Sky {
   constructor() {
     this.group = new THREE.Group();
 
-    // Sky sphere
+    // Daytime sky sphere - bright blue gradient like Fortnite
     const skyGeo = new THREE.SphereGeometry(1200, 32, 32);
     const skyMat = new THREE.ShaderMaterial({
       uniforms: {
-        topColor: { value: new THREE.Color(0x1a0a2a) },
-        bottomColor: { value: new THREE.Color(0x0a0a1a) }
+        topColor: { value: new THREE.Color(0x1e90ff) },    // bright blue
+        bottomColor: { value: new THREE.Color(0x87ceeb) },  // light sky blue
+        horizonColor: { value: new THREE.Color(0xc9e8f5) }, // pale horizon
       },
       vertexShader: `
         varying vec3 vWorldPos;
@@ -22,10 +23,17 @@ export class Sky {
       fragmentShader: `
         uniform vec3 topColor;
         uniform vec3 bottomColor;
+        uniform vec3 horizonColor;
         varying vec3 vWorldPos;
         void main() {
           float h = normalize(vWorldPos).y;
-          gl_FragColor = vec4(mix(bottomColor, topColor, max(h, 0.0)), 1.0);
+          vec3 col;
+          if (h > 0.0) {
+            col = mix(horizonColor, topColor, pow(h, 0.6));
+          } else {
+            col = mix(horizonColor, bottomColor, pow(-h, 0.4));
+          }
+          gl_FragColor = vec4(col, 1.0);
         }
       `,
       side: THREE.BackSide
@@ -33,33 +41,58 @@ export class Sky {
     const skyMesh = new THREE.Mesh(skyGeo, skyMat);
     this.group.add(skyMesh);
 
-    // Stars
-    const starCount = 2000;
-    const starGeo = new THREE.BufferGeometry();
-    const starPositions = new Float32Array(starCount * 3);
-    for (let i = 0; i < starCount; i++) {
-      const theta = Math.random() * Math.PI * 2;
-      const phi = Math.acos(2 * Math.random() - 1);
-      const r = 1000;
-      starPositions[i * 3] = r * Math.sin(phi) * Math.cos(theta);
-      starPositions[i * 3 + 1] = Math.abs(r * Math.cos(phi));
-      starPositions[i * 3 + 2] = r * Math.sin(phi) * Math.sin(theta);
-    }
-    starGeo.setAttribute('position', new THREE.BufferAttribute(starPositions, 3));
-    const starMat = new THREE.PointsMaterial({ color: 0xffffff, size: 1.5, sizeAttenuation: true });
-    const stars = new THREE.Points(starGeo, starMat);
-    this.group.add(stars);
-
-    // Moon
-    const moonGeo = new THREE.SphereGeometry(8, 16, 16);
-    const moonMat = new THREE.MeshStandardMaterial({
-      color: 0xffffcc,
-      emissive: 0xffffcc,
-      emissiveIntensity: 0.8
+    // Clouds - flat white translucent planes scattered in sky
+    const cloudMat = new THREE.MeshBasicMaterial({
+      color: 0xffffff,
+      transparent: true,
+      opacity: 0.7,
+      side: THREE.DoubleSide,
+      depthWrite: false
     });
-    const moon = new THREE.Mesh(moonGeo, moonMat);
-    moon.position.set(300, 400, -500);
-    this.group.add(moon);
+
+    for (let i = 0; i < 30; i++) {
+      const cloudGroup = new THREE.Group();
+      // Each cloud = cluster of stretched spheres
+      const puffs = 3 + Math.floor(Math.random() * 4);
+      for (let p = 0; p < puffs; p++) {
+        const s = 15 + Math.random() * 25;
+        const geo = new THREE.SphereGeometry(s, 8, 6);
+        geo.scale(1, 0.3, 1);
+        const puff = new THREE.Mesh(geo, cloudMat);
+        puff.position.set(
+          (Math.random() - 0.5) * s * 1.5,
+          (Math.random() - 0.5) * 3,
+          (Math.random() - 0.5) * s * 1.2
+        );
+        cloudGroup.add(puff);
+      }
+      cloudGroup.position.set(
+        (Math.random() - 0.5) * 900,
+        120 + Math.random() * 100,
+        (Math.random() - 0.5) * 900
+      );
+      this.group.add(cloudGroup);
+    }
+
+    // Sun
+    const sunGeo = new THREE.SphereGeometry(15, 16, 16);
+    const sunMat = new THREE.MeshBasicMaterial({
+      color: 0xffee88,
+    });
+    const sun = new THREE.Mesh(sunGeo, sunMat);
+    sun.position.set(300, 350, -400);
+    this.group.add(sun);
+
+    // Sun glow
+    const glowGeo = new THREE.SphereGeometry(30, 16, 16);
+    const glowMat = new THREE.MeshBasicMaterial({
+      color: 0xffee88,
+      transparent: true,
+      opacity: 0.15,
+    });
+    const glow = new THREE.Mesh(glowGeo, glowMat);
+    glow.position.copy(sun.position);
+    this.group.add(glow);
   }
 
   addToScene(scene) {
