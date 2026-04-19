@@ -24,6 +24,7 @@ export class Menu {
       case 'LOADING': this._buildLoading(); break;
       case 'DEAD': this._buildDead(data); break;
       case 'WIN': this._buildWin(data); break;
+      case 'CREDITS': this._buildCredits(); break;
     }
 
     this.container.appendChild(this._overlay);
@@ -42,6 +43,7 @@ export class Menu {
         <div style="display:flex;flex-direction:column;align-items:center;gap:12px;">
           ${this._menuBtn('JOUER', 'play')}
           ${this._menuBtn('CONTRÔLES', 'controls')}
+          ${this._menuBtn('CRÉDITS', 'credits')}
         </div>
         <div id="controls-panel" style="display:none;margin-top:30px;color:#888;font-size:12px;text-align:left;max-width:300px;margin-left:auto;margin-right:auto;">
           <p>WASD — Déplacement</p>
@@ -62,6 +64,9 @@ export class Menu {
     this._overlay.querySelector('[data-action="controls"]').onclick = () => {
       const panel = document.getElementById('controls-panel');
       panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+    };
+    this._overlay.querySelector('[data-action="credits"]').onclick = () => {
+      this.showScreen('CREDITS');
     };
   }
 
@@ -129,6 +134,33 @@ export class Menu {
 
     this._overlay.querySelector('[data-action="replay"]').onclick = () => this.onAction('replay');
     this._overlay.querySelector('[data-action="menu"]').onclick = () => this.onAction('mainMenu');
+  }
+
+  _buildCredits() {
+    this._overlay.innerHTML = `
+      <div style="text-align:center;max-width:500px;">
+        <h2 style="color:#00ffcc;font-size:28px;margin-bottom:30px;letter-spacing:4px;">CRÉDITS</h2>
+        <div style="color:#aaa;font-size:12px;text-align:left;line-height:1.8;">
+          <p style="color:#4488ff;font-size:14px;margin-bottom:8px;">Modèles 3D (CC-BY)</p>
+          <p><span style="color:#ccc;">Map FPS</span> — Konstantinos Simantiras</p>
+          <p><span style="color:#ccc;">9mm Pistol</span> — Prem Mane</p>
+          <p><span style="color:#ccc;">M4 Assault Rifle</span> — szaw</p>
+          <p><span style="color:#ccc;">Mossberg500 Shotgun</span> — AK (@skaf13)</p>
+          <p style="margin-top:12px;"><span style="color:#ccc;">Soldier</span> — Three.js examples</p>
+          <p><span style="color:#ccc;">Character & Animations</span> — Mixamo (Adobe)</p>
+          <p style="color:#4488ff;font-size:14px;margin-top:20px;margin-bottom:8px;">Technologies</p>
+          <p>Three.js &middot; Cannon-es &middot; Vite &middot; Howler.js</p>
+          <p style="color:#4488ff;font-size:14px;margin-top:20px;margin-bottom:8px;">Source des modèles</p>
+          <p><a href="https://sketchfab.com" target="_blank" style="color:#00ffcc;">Sketchfab</a> &middot;
+             <a href="https://www.mixamo.com" target="_blank" style="color:#00ffcc;">Mixamo</a></p>
+        </div>
+        <div style="margin-top:30px;">${this._menuBtn('RETOUR', 'back')}</div>
+      </div>
+    `;
+
+    this._overlay.querySelector('[data-action="back"]').onclick = () => {
+      this.showScreen('MENU');
+    };
   }
 
   _menuBtn(label, action) {

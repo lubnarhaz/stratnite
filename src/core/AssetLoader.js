@@ -1,9 +1,11 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
 
 export class AssetLoader {
   constructor() {
     this.gltfLoader = new GLTFLoader();
+    this.fbxLoader = new FBXLoader();
     this.textureLoader = new THREE.TextureLoader();
     this.cache = new Map();
   }
@@ -44,6 +46,31 @@ export class AssetLoader {
       }
     });
     return clone;
+  }
+
+  async loadFBX(url) {
+    if (this.cache.has(url)) return this.cache.get(url);
+
+    return new Promise((resolve, reject) => {
+      this.fbxLoader.load(
+        url,
+        (fbx) => {
+          fbx.traverse((child) => {
+            if (child.isMesh) {
+              child.castShadow = true;
+              child.receiveShadow = true;
+            }
+          });
+          this.cache.set(url, fbx);
+          resolve(fbx);
+        },
+        undefined,
+        (err) => {
+          console.warn(`Failed to load FBX ${url}:`, err);
+          reject(err);
+        }
+      );
+    });
   }
 
   async loadTexture(url) {

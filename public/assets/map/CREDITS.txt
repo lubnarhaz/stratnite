@@ -1,0 +1,4 @@
+Map : low-poly Fps Map
+Author: Konstantinos.Simantiras
+Source: https://sketchfab.com/3d-models/low-poly-fps-map-ab86dda978264d86becaafd9073a6f72
+License: CC Attribution (CC-BY) — author must be credited, commercial use allowed.

@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
 import { Character } from './Character.js';
 import { Projectile } from './Projectile.js';
+import { assetLoader } from '../core/AssetLoader.js';
 
 export class Player extends Character {
   constructor(charData) {
@@ -9,7 +10,8 @@ export class Player extends Character {
       hp: charData.hp,
       maxShield: charData.maxShield,
       speed: charData.speed,
-      color: charData.color
+      color: charData.color,
+      useMixamo: true
     });
 
     this.charData = charData;
@@ -64,6 +66,14 @@ export class Player extends Character {
 
     // Kill count
     this.kills = 0;
+
+    // Weapon model
+    this._weaponMesh = null;
+    this._currentWeaponId = null;
+
+    // Animation state tracking
+    this._isMoving = false;
+    this._isShooting = false;
   }
 
   update(dt, input, camera, terrain) {
@@ -99,7 +109,8 @@ export class Player extends Character {
       moveDir.add(right.clone().multiplyScalar(touchDir.x));
     }
 
-    if (moveDir.lengthSq() > 0) {
+    const isMoving = moveDir.lengthSq() > 0;
+    if (isMoving) {
       moveDir.normalize();
       const speed = this.speed * 3;
       this.body.velocity.x = moveDir.x * speed;
@@ -108,6 +119,14 @@ export class Player extends Character {
       // Rotate mesh to face movement direction
       this.mesh.rotation.y = Math.atan2(moveDir.x, moveDir.z);
     }
+
+    // Drive animations based on state
+    if (isMoving && !this._isMoving) {
+      this.playAnimation('run');
+    } else if (!isMoving && this._isMoving) {
+      this.playAnimation('idle');
+    }
+    this._isMoving = isMoving;
 
     // Jump
     this._groundCheckTimer += dt;
@@ -119,6 +138,7 @@ export class Player extends Character {
     if ((input.isDown('Space')) && this.grounded) {
       this.body.velocity.y = 10;
       this.grounded = false;
+      this.playAnimation('jump');
     }
 
     // Keep above terrain
@@ -166,6 +186,7 @@ export class Player extends Character {
 
     this.lastShot = now;
     if (weapon.currentAmmo > 0) weapon.currentAmmo--;
+    this.playAnimation('shoot');
 
     // Direction from camera
     const dir = new THREE.Vector3(
@@ -240,6 +261,59 @@ export class Player extends Character {
         this.invincible = true;
         setTimeout(() => { this.invincible = false; }, 3000);
         break;
+    }
+  }
+
+  async attachWeaponModel(weapon) {
+    if (!weapon || !weapon.model) {
+      // No 3D model for this weapon — remove current
+      if (this._weaponMesh) {
+        this._weaponMesh.parent?.remove(this._weaponMesh);
+        this._weaponMesh = null;
+      }
+      this._currentWeaponId = null;
+      return;
+    }
+    if (weapon.id === this._currentWeaponId) return;
+
+    // Remove previous weapon mesh
+    if (this._weaponMesh) {
+      this._weaponMesh.parent?.remove(this._weaponMesh);
+      this._weaponMesh = null;
+    }
+
+    try {
+      const gltf = await assetLoader.loadGLTF(weapon.model);
+      const model = assetLoader.cloneGLTF(gltf);
+      model.scale.setScalar(weapon.modelScale || 0.01);
+      model.rotation.set(
+        weapon.modelRotX || 0,
+        weapon.modelRotY || 0,
+        weapon.modelRotZ || 0
+      );
+
+      // Try to attach to right hand bone (Mixamo skeleton)
+      let attached = false;
+      if (this._glbModel) {
+        this._glbModel.traverse((child) => {
+          if (attached) return;
+          if (child.isBone && child.name.includes('RightHand')) {
+            child.add(model);
+            attached = true;
+          }
+        });
+      }
+
+      // Fallback: attach to mesh group with offset
+      if (!attached) {
+        model.position.set(0.5, 1.0, 0.3);
+        this.mesh.add(model);
+      }
+
+      this._weaponMesh = model;
+      this._currentWeaponId = weapon.id;
+    } catch (err) {
+      console.warn('Failed to load weapon model:', err);
     }
   }
 

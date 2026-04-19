@@ -1,11 +1,13 @@
 export const WEAPONS = {
   laser: {
     name: 'Laser Pistol', icon: '🔫', dmg: 35, rate: 3.5, range: 80,
-    ammo: 20, speed: 60, color: 0x00ff88, rar: 'common'
+    ammo: 20, speed: 60, color: 0x00ff88, rar: 'common',
+    model: '/assets/weapons/pistol.glb', modelScale: 0.35, modelRotY: Math.PI
   },
   plasma: {
     name: 'Plasma Rifle', icon: '⚡', dmg: 65, rate: 1.2, range: 120,
-    ammo: 20, speed: 55, color: 0x4488ff, rar: 'uncommon'
+    ammo: 20, speed: 55, color: 0x4488ff, rar: 'uncommon',
+    model: '/assets/weapons/rifle.glb', modelScale: 0.008, modelRotY: Math.PI
   },
   pulse: {
     name: 'Pulse SMG', icon: '💫', dmg: 18, rate: 9, range: 50,
@@ -21,7 +23,8 @@ export const WEAPONS = {
   },
   shotgun: {
     name: 'Energy Shotgun', icon: '🔥', dmg: 22, rate: 0.7, range: 20,
-    ammo: 8, speed: 50, color: 0xff8800, rar: 'uncommon', pellets: 6
+    ammo: 8, speed: 50, color: 0xff8800, rar: 'uncommon', pellets: 6,
+    model: '/assets/weapons/shotgun.glb', modelScale: 0.25, modelRotY: Math.PI
   },
   blade: {
     name: 'Plasma Blade', icon: '⚔️', dmg: 90, rate: 2.0, range: 3,

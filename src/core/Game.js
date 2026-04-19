@@ -158,6 +158,7 @@ export class Game {
     // Give player a starting weapon
     const startWeapon = { ...WEAPONS.laser, id: 'laser', currentAmmo: WEAPONS.laser.ammo };
     this.inventory.add(startWeapon);
+    this.player.attachWeaponModel(startWeapon);
 
     // Bots
     this.bots = [];
@@ -272,6 +273,8 @@ export class Game {
       for (let i = 0; i < 5; i++) {
         if (this.input.isDown(`Digit${i + 1}`)) {
           this.inventory.use(i);
+          const w = this.inventory.getActive();
+          this.player.attachWeaponModel(w);
         }
       }
 

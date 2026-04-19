@@ -1,23 +1,72 @@
 import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
-import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { assetLoader } from '../core/AssetLoader.js';
 
-const gltfLoader = new GLTFLoader();
+// --- Soldier GLB cache (for bots) ---
 let _soldierCache = null;
 let _soldierLoading = null;
 
 function loadSoldierModel() {
   if (_soldierCache) return Promise.resolve(_soldierCache);
   if (_soldierLoading) return _soldierLoading;
-  _soldierLoading = new Promise((resolve) => {
-    gltfLoader.load('/models/threejs_soldier.glb', (gltf) => {
-      _soldierCache = gltf;
-      resolve(gltf);
-    }, undefined, () => {
-      resolve(null);
-    });
-  });
+  _soldierLoading = assetLoader.loadGLTF('/models/threejs_soldier.glb')
+    .then(gltf => { _soldierCache = gltf; return gltf; })
+    .catch(() => null);
   return _soldierLoading;
+}
+
+// --- Mixamo FBX cache (for player) ---
+let _mixamoCache = null;
+let _mixamoLoading = null;
+
+function loadMixamoCharacter() {
+  if (_mixamoCache) return Promise.resolve(_mixamoCache);
+  if (_mixamoLoading) return _mixamoLoading;
+
+  _mixamoLoading = Promise.all([
+    assetLoader.loadFBX('/assets/character/character.fbx'),
+    assetLoader.loadFBX('/assets/character/run.fbx'),
+    assetLoader.loadFBX('/assets/character/shoot.fbx'),
+    assetLoader.loadFBX('/assets/character/jump.fbx'),
+    assetLoader.loadFBX('/assets/character/die.fbx'),
+  ]).then(([charFbx, runFbx, shootFbx, jumpFbx, dieFbx]) => {
+    // Extract animation clips from each FBX, rename them
+    const clips = [];
+    if (runFbx.animations.length > 0) {
+      const c = runFbx.animations[0].clone();
+      c.name = 'run';
+      clips.push(c);
+    }
+    if (shootFbx.animations.length > 0) {
+      const c = shootFbx.animations[0].clone();
+      c.name = 'shoot';
+      clips.push(c);
+    }
+    if (jumpFbx.animations.length > 0) {
+      const c = jumpFbx.animations[0].clone();
+      c.name = 'jump';
+      clips.push(c);
+    }
+    if (dieFbx.animations.length > 0) {
+      const c = dieFbx.animations[0].clone();
+      c.name = 'die';
+      clips.push(c);
+    }
+    // Also grab idle from charFbx if it has an animation
+    if (charFbx.animations.length > 0) {
+      const c = charFbx.animations[0].clone();
+      c.name = 'idle';
+      clips.push(c);
+    }
+
+    _mixamoCache = { model: charFbx, clips };
+    return _mixamoCache;
+  }).catch((err) => {
+    console.warn('Mixamo character load failed:', err);
+    return null;
+  });
+
+  return _mixamoLoading;
 }
 
 export class Character {
@@ -31,13 +80,14 @@ export class Character {
     this.color = options.color || 0x00ffcc;
     this.mixer = null;
     this._actions = {};
+    this._useMixamo = options.useMixamo || false;
 
     this.mesh = new THREE.Group();
 
     // Build procedural fallback immediately
     this._buildProceduralModel(options);
 
-    // Try to load GLTF model async
+    // Try to load 3D model async
     this._loadModel(options);
 
     // Physics body
@@ -50,6 +100,58 @@ export class Character {
   }
 
   async _loadModel(options) {
+    if (this._useMixamo) {
+      await this._loadMixamoModel(options);
+    } else {
+      await this._loadSoldierModel(options);
+    }
+  }
+
+  async _loadMixamoModel(options) {
+    const data = await loadMixamoCharacter();
+    if (!data) return;
+
+    const model = data.model.clone(true);
+    model.scale.setScalar(0.01); // Mixamo FBX are in cm, scale to meters
+    model.position.y = -0.9;
+
+    // Tint with character color
+    const col = new THREE.Color(options.color || 0x00ffcc);
+    model.traverse((child) => {
+      if (child.isMesh) {
+        child.castShadow = true;
+        child.receiveShadow = true;
+        if (child.material) {
+          child.material = child.material.clone();
+          if (child.material.color) {
+            child.material.color.lerp(col, 0.3);
+          }
+        }
+      }
+    });
+
+    // Remove procedural meshes
+    this._removeProceduralMeshes();
+
+    this.mesh.add(model);
+    this._glbModel = model;
+
+    // Setup animation mixer on the model
+    this.mixer = new THREE.AnimationMixer(model);
+    for (const clip of data.clips) {
+      const action = this.mixer.clipAction(clip);
+      this._actions[clip.name] = action;
+    }
+
+    // Play idle or first run frame as default
+    const idle = this._actions['idle'] || this._actions['run'];
+    if (idle) {
+      idle.play();
+      this._currentAction = idle;
+    }
+  }
+
+  async _loadSoldierModel(options) {
     const gltf = await loadSoldierModel();
     if (!gltf) return;
 
@@ -63,7 +165,6 @@ export class Character {
       if (child.isMesh) {
         child.castShadow = true;
         child.receiveShadow = true;
-        // Tint materials
         if (child.material) {
           child.material = child.material.clone();
           child.material.color.lerp(col, 0.35);
@@ -72,9 +173,7 @@ export class Character {
     });
 
     // Remove procedural meshes
-    const toRemove = [];
-    this.mesh.children.forEach(c => { if (c.userData._procedural) toRemove.push(c); });
-    toRemove.forEach(c => this.mesh.remove(c));
+    this._removeProceduralMeshes();
 
     this.mesh.add(model);
     this._glbModel = model;
@@ -86,10 +185,15 @@ export class Character {
         const action = this.mixer.clipAction(clip);
         this._actions[clip.name.toLowerCase()] = action;
       }
-      // Play idle by default
       const idle = this._actions['idle'] || this._actions['tpose'] || Object.values(this._actions)[0];
       if (idle) { idle.play(); this._currentAction = idle; }
     }
+  }
+
+  _removeProceduralMeshes() {
+    const toRemove = [];
+    this.mesh.children.forEach(c => { if (c.userData._procedural) toRemove.push(c); });
+    toRemove.forEach(c => this.mesh.remove(c));
   }
 
   playAnimation(name) {

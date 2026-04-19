@@ -1,0 +1,7 @@
+Weapons - Attribution (CC-BY):
+- pistol.glb : "9mm Pistol (Low poly Gun)" by Prem Mane
+  https://sketchfab.com/3d-models/9mm-pistol-low-poly-gun-7a0b78d873bb4f77af7375b7ccd9dc1d
+- rifle.glb : "Low-poly M4 assault rifle" by szaw
+  https://sketchfab.com/3d-models/low-poly-m4-assault-rifle-fb85c455cf374675a1db7988def2d926
+- shotgun.glb : "Mossberg500 Shotgun low-poly" by AK (@skaf13)
+  https://sketchfab.com/3d-models/mossberg500-shotgun-low-poly-5ae38a34bfed4c91a3dbe78aaea51790
