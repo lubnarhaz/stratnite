@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { PostProcessing } from './PostProcessing.js';
 
 export class Engine {
   constructor(canvas) {
@@ -52,13 +53,22 @@ export class Engine {
     this.scene.add(fill);
   }
 
+  initPostProcessing() {
+    this.postProcessing = new PostProcessing(this.renderer, this.scene, this.camera);
+  }
+
   resize(w, h) {
     this.camera.aspect = w / h;
     this.camera.updateProjectionMatrix();
     this.renderer.setSize(w, h);
+    if (this.postProcessing) this.postProcessing.resize(w, h);
   }
 
   render() {
-    this.renderer.render(this.scene, this.camera);
+    if (this.postProcessing) {
+      this.postProcessing.render();
+    } else {
+      this.renderer.render(this.scene, this.camera);
+    }
   }
 }

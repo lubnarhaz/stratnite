@@ -1,5 +1,24 @@
 import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+
+const gltfLoader = new GLTFLoader();
+let _soldierCache = null;
+let _soldierLoading = null;
+
+function loadSoldierModel() {
+  if (_soldierCache) return Promise.resolve(_soldierCache);
+  if (_soldierLoading) return _soldierLoading;
+  _soldierLoading = new Promise((resolve) => {
+    gltfLoader.load('/models/threejs_soldier.glb', (gltf) => {
+      _soldierCache = gltf;
+      resolve(gltf);
+    }, undefined, () => {
+      resolve(null);
+    });
+  });
+  return _soldierLoading;
+}
 
 export class Character {
   constructor(options = {}) {
@@ -10,169 +29,16 @@ export class Character {
     this.speed = options.speed || 6;
     this.alive = true;
     this.color = options.color || 0x00ffcc;
-
-    const col = new THREE.Color(this.color);
-    const darkCol = col.clone().multiplyScalar(0.55);
-    const skinColor = 0xdba882;
-
-    const bodyMat = new THREE.MeshStandardMaterial({ color: col, roughness: 0.55, metalness: 0.05 });
-    const darkMat = new THREE.MeshStandardMaterial({ color: darkCol, roughness: 0.6 });
-    const skinMat = new THREE.MeshStandardMaterial({ color: skinColor, roughness: 0.65 });
-    const shoeMat = new THREE.MeshStandardMaterial({ color: 0x2a2a2a, roughness: 0.8 });
-    const eyeWhite = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.2 });
-    const pupilMat = new THREE.MeshStandardMaterial({ color: 0x1a1a1a });
+    this.mixer = null;
+    this._actions = {};
 
     this.mesh = new THREE.Group();
 
-    // --- TORSO (rounded) ---
-    const torsoGeo = new THREE.CylinderGeometry(0.38, 0.32, 0.9, 10);
-    const torso = new THREE.Mesh(torsoGeo, bodyMat);
-    torso.position.y = 1.05;
-    torso.castShadow = true;
-    this.mesh.add(torso);
+    // Build procedural fallback immediately
+    this._buildProceduralModel(options);
 
-    // Chest plate detail
-    const chestGeo = new THREE.SphereGeometry(0.36, 10, 8, 0, Math.PI * 2, 0, Math.PI / 2);
-    const chest = new THREE.Mesh(chestGeo, bodyMat);
-    chest.position.set(0, 1.25, 0.05);
-    chest.rotation.x = Math.PI;
-    chest.scale.set(1, 0.5, 0.8);
-    this.mesh.add(chest);
-
-    // Belt
-    const beltGeo = new THREE.CylinderGeometry(0.34, 0.34, 0.08, 10);
-    const belt = new THREE.Mesh(beltGeo, darkMat);
-    belt.position.y = 0.62;
-    this.mesh.add(belt);
-
-    // Belt buckle
-    const buckleGeo = new THREE.BoxGeometry(0.1, 0.07, 0.06);
-    const buckleMat = new THREE.MeshStandardMaterial({ color: 0xccaa44, metalness: 0.7, roughness: 0.3 });
-    const buckle = new THREE.Mesh(buckleGeo, buckleMat);
-    buckle.position.set(0, 0.62, 0.34);
-    this.mesh.add(buckle);
-
-    // --- LEGS ---
-    for (const side of [-1, 1]) {
-      // Upper leg
-      const upperGeo = new THREE.CylinderGeometry(0.14, 0.12, 0.38, 8);
-      const upper = new THREE.Mesh(upperGeo, darkMat);
-      upper.position.set(side * 0.17, 0.4, 0);
-      upper.castShadow = true;
-      this.mesh.add(upper);
-
-      // Knee
-      const kneeGeo = new THREE.SphereGeometry(0.12, 8, 6);
-      const knee = new THREE.Mesh(kneeGeo, darkMat);
-      knee.position.set(side * 0.17, 0.22, 0);
-      this.mesh.add(knee);
-
-      // Lower leg
-      const lowerGeo = new THREE.CylinderGeometry(0.12, 0.1, 0.35, 8);
-      const lower = new THREE.Mesh(lowerGeo, bodyMat);
-      lower.position.set(side * 0.17, 0.03, 0);
-      lower.castShadow = true;
-      this.mesh.add(lower);
-
-      // Boot
-      const bootGeo = new THREE.BoxGeometry(0.22, 0.14, 0.32);
-      const boot = new THREE.Mesh(bootGeo, shoeMat);
-      boot.position.set(side * 0.17, -0.15, 0.04);
-      boot.castShadow = true;
-      this.mesh.add(boot);
-
-      // Boot sole
-      const soleGeo = new THREE.BoxGeometry(0.24, 0.04, 0.34);
-      const soleMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.9 });
-      const sole = new THREE.Mesh(soleGeo, soleMat);
-      sole.position.set(side * 0.17, -0.22, 0.04);
-      this.mesh.add(sole);
-    }
-
-    // --- HEAD ---
-    const headGeo = new THREE.SphereGeometry(0.28, 12, 10);
-    const head = new THREE.Mesh(headGeo, skinMat);
-    head.position.y = 1.78;
-    head.scale.set(1, 1.05, 0.95);
-    head.castShadow = true;
-    this.mesh.add(head);
-
-    // Eyes
-    for (const side of [-1, 1]) {
-      const eyeGeo = new THREE.SphereGeometry(0.055, 8, 6);
-      const eye = new THREE.Mesh(eyeGeo, eyeWhite);
-      eye.position.set(side * 0.1, 1.82, 0.22);
-      this.mesh.add(eye);
-
-      const pupilGeo = new THREE.SphereGeometry(0.03, 6, 4);
-      const pupil = new THREE.Mesh(pupilGeo, pupilMat);
-      pupil.position.set(side * 0.1, 1.82, 0.26);
-      this.mesh.add(pupil);
-    }
-
-    // Mouth line
-    const mouthGeo = new THREE.BoxGeometry(0.1, 0.015, 0.02);
-    const mouth = new THREE.Mesh(mouthGeo, pupilMat);
-    mouth.position.set(0, 1.72, 0.25);
-    this.mesh.add(mouth);
-
-    // Hair / Helmet
-    const helmetGeo = new THREE.SphereGeometry(0.3, 12, 8, 0, Math.PI * 2, 0, Math.PI * 0.6);
-    const helmet = new THREE.Mesh(helmetGeo, bodyMat);
-    helmet.position.y = 1.82;
-    helmet.scale.set(1, 1, 0.95);
-    helmet.castShadow = true;
-    this.mesh.add(helmet);
-
-    // --- ARMS ---
-    for (const side of [-1, 1]) {
-      // Shoulder pad
-      const shoulderGeo = new THREE.SphereGeometry(0.14, 8, 6);
-      const shoulder = new THREE.Mesh(shoulderGeo, bodyMat);
-      shoulder.position.set(side * 0.5, 1.4, 0);
-      this.mesh.add(shoulder);
-
-      // Upper arm
-      const upperArmGeo = new THREE.CylinderGeometry(0.09, 0.08, 0.35, 8);
-      const upperArm = new THREE.Mesh(upperArmGeo, bodyMat);
-      upperArm.position.set(side * 0.5, 1.15, 0);
-      upperArm.castShadow = true;
-      this.mesh.add(upperArm);
-
-      // Elbow
-      const elbowGeo = new THREE.SphereGeometry(0.08, 6, 4);
-      const elbow = new THREE.Mesh(elbowGeo, skinMat);
-      elbow.position.set(side * 0.5, 0.98, 0);
-      this.mesh.add(elbow);
-
-      // Forearm
-      const foreGeo = new THREE.CylinderGeometry(0.07, 0.06, 0.3, 8);
-      const fore = new THREE.Mesh(foreGeo, skinMat);
-      fore.position.set(side * 0.5, 0.8, 0);
-      fore.castShadow = true;
-      this.mesh.add(fore);
-
-      // Hand
-      const handGeo = new THREE.SphereGeometry(0.07, 6, 4);
-      const hand = new THREE.Mesh(handGeo, skinMat);
-      hand.position.set(side * 0.5, 0.64, 0);
-      this.mesh.add(hand);
-    }
-
-    // --- BACKPACK ---
-    const bpGeo = new THREE.BoxGeometry(0.35, 0.4, 0.22);
-    const bp = new THREE.Mesh(bpGeo, darkMat);
-    bp.position.set(0, 1.15, -0.35);
-    bp.castShadow = true;
-    this.mesh.add(bp);
-
-    // Backpack straps
-    for (const side of [-1, 1]) {
-      const strapGeo = new THREE.BoxGeometry(0.04, 0.5, 0.06);
-      const strap = new THREE.Mesh(strapGeo, darkMat);
-      strap.position.set(side * 0.13, 1.2, -0.2);
-      this.mesh.add(strap);
-    }
+    // Try to load GLTF model async
+    this._loadModel(options);
 
     // Physics body
     this.body = new CANNON.Body({
@@ -181,6 +47,115 @@ export class Character {
       fixedRotation: true,
       linearDamping: 0.9
     });
+  }
+
+  async _loadModel(options) {
+    const gltf = await loadSoldierModel();
+    if (!gltf) return;
+
+    const model = gltf.scene.clone(true);
+    model.scale.setScalar(0.55);
+    model.position.y = -0.22;
+
+    // Tint the model with character color
+    const col = new THREE.Color(options.color || 0x00ffcc);
+    model.traverse((child) => {
+      if (child.isMesh) {
+        child.castShadow = true;
+        child.receiveShadow = true;
+        // Tint materials
+        if (child.material) {
+          child.material = child.material.clone();
+          child.material.color.lerp(col, 0.35);
+        }
+      }
+    });
+
+    // Remove procedural meshes
+    const toRemove = [];
+    this.mesh.children.forEach(c => { if (c.userData._procedural) toRemove.push(c); });
+    toRemove.forEach(c => this.mesh.remove(c));
+
+    this.mesh.add(model);
+    this._glbModel = model;
+
+    // Setup animations
+    if (gltf.animations && gltf.animations.length > 0) {
+      this.mixer = new THREE.AnimationMixer(model);
+      for (const clip of gltf.animations) {
+        const action = this.mixer.clipAction(clip);
+        this._actions[clip.name.toLowerCase()] = action;
+      }
+      // Play idle by default
+      const idle = this._actions['idle'] || this._actions['tpose'] || Object.values(this._actions)[0];
+      if (idle) { idle.play(); this._currentAction = idle; }
+    }
+  }
+
+  playAnimation(name) {
+    const action = this._actions[name.toLowerCase()];
+    if (!action || action === this._currentAction) return;
+    if (this._currentAction) {
+      this._currentAction.fadeOut(0.2);
+    }
+    action.reset().fadeIn(0.2).play();
+    this._currentAction = action;
+  }
+
+  _buildProceduralModel(options) {
+    const col = new THREE.Color(options.color || 0x00ffcc);
+    const darkCol = col.clone().multiplyScalar(0.55);
+    const skinColor = 0xdba882;
+
+    const bodyMat = new THREE.MeshStandardMaterial({ color: col, roughness: 0.55 });
+    const darkMat = new THREE.MeshStandardMaterial({ color: darkCol, roughness: 0.6 });
+    const skinMat = new THREE.MeshStandardMaterial({ color: skinColor, roughness: 0.65 });
+    const shoeMat = new THREE.MeshStandardMaterial({ color: 0x2a2a2a, roughness: 0.8 });
+
+    const group = new THREE.Group();
+    group.userData._procedural = true;
+
+    // Torso
+    const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.3, 0.85, 10), bodyMat);
+    torso.position.y = 1.05; torso.castShadow = true;
+    group.add(torso);
+
+    // Belt
+    group.add(Object.assign(new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.32, 0.08, 10), darkMat), { position: new THREE.Vector3(0, 0.62, 0) }));
+
+    // Legs
+    for (const s of [-1, 1]) {
+      const upper = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.11, 0.38, 8), darkMat);
+      upper.position.set(s * 0.16, 0.4, 0); upper.castShadow = true; group.add(upper);
+      const lower = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.09, 0.35, 8), bodyMat);
+      lower.position.set(s * 0.16, 0.05, 0); lower.castShadow = true; group.add(lower);
+      const boot = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.14, 0.3), shoeMat);
+      boot.position.set(s * 0.16, -0.14, 0.03); boot.castShadow = true; group.add(boot);
+    }
+
+    // Head
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.26, 12, 10), skinMat);
+    head.position.y = 1.76; head.castShadow = true; group.add(head);
+    const helmet = new THREE.Mesh(new THREE.SphereGeometry(0.28, 12, 8, 0, Math.PI * 2, 0, Math.PI * 0.6), bodyMat);
+    helmet.position.y = 1.8; group.add(helmet);
+
+    // Arms
+    for (const s of [-1, 1]) {
+      const shoulder = new THREE.Mesh(new THREE.SphereGeometry(0.13, 8, 6), bodyMat);
+      shoulder.position.set(s * 0.48, 1.38, 0); group.add(shoulder);
+      const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.07, 0.35, 8), bodyMat);
+      arm.position.set(s * 0.48, 1.13, 0); arm.castShadow = true; group.add(arm);
+      const fore = new THREE.Mesh(new THREE.CylinderGeometry(0.065, 0.055, 0.3, 8), skinMat);
+      fore.position.set(s * 0.48, 0.8, 0); fore.castShadow = true; group.add(fore);
+      const hand = new THREE.Mesh(new THREE.SphereGeometry(0.065, 6, 4), skinMat);
+      hand.position.set(s * 0.48, 0.64, 0); group.add(hand);
+    }
+
+    // Backpack
+    const bp = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.38, 0.2), darkMat);
+    bp.position.set(0, 1.12, -0.33); bp.castShadow = true; group.add(bp);
+
+    this.mesh.add(group);
   }
 
   takeDamage(amount) {
@@ -192,10 +167,7 @@ export class Character {
       remaining -= absorbed;
     }
     this.hp -= remaining;
-    if (this.hp <= 0) {
-      this.hp = 0;
-      this.alive = false;
-    }
+    if (this.hp <= 0) { this.hp = 0; this.alive = false; }
   }
 
   heal(amount) { this.hp = Math.min(this.maxHp, this.hp + amount); }
@@ -205,6 +177,7 @@ export class Character {
     if (!this.alive) return;
     this.mesh.position.copy(this.body.position);
     this.mesh.position.y -= 0.9;
+    if (this.mixer) this.mixer.update(dt);
   }
 
   getPosition() { return this.body.position; }

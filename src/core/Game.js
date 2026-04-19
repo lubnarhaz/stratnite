@@ -201,6 +201,9 @@ export class Game {
     // Projectiles
     this.projectiles = [];
 
+    // Post-processing (bloom + color grading)
+    this.engine.initPostProcessing();
+
     // HUD
     this.hud.build();
     this.hud.show();
