@@ -8,6 +8,7 @@ export class InputManager {
     this.mouseButtons = 0;
     this.sensitivity = 0.002;
     this._locked = false;
+    this.enabled = false; // Only lock pointer when game is playing
 
     this._onKeyDown = (e) => {
       this.keys.set(e.code, true);
@@ -24,7 +25,7 @@ export class InputManager {
     this._onMouseDown = (e) => {
       this.mouseDown = true;
       this.mouseButtons = e.buttons;
-      if (!this._locked) {
+      if (!this._locked && this.enabled && e.target === this.canvas) {
         this.canvas.requestPointerLock();
       }
     };

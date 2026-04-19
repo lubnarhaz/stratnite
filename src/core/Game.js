@@ -60,6 +60,8 @@ export class Game {
         this.charSelect.show();
         break;
       case 'mainMenu':
+        this.input.enabled = false;
+        document.exitPointerLock();
         this.menu.showScreen('MENU');
         break;
     }
@@ -99,6 +101,7 @@ export class Game {
 
   _initGame(charId) {
     this.state = 'PLAYING';
+    this.input.enabled = true;
     this.gameTime = 0;
 
     // Clear previous
@@ -369,6 +372,8 @@ export class Game {
 
   _onPlayerDeath() {
     this.state = 'DEAD';
+    this.input.enabled = false;
+    document.exitPointerLock();
     this.hud.hide();
     const aliveBots = this.bots.filter(b => b.alive).length;
     const mins = Math.floor(this.gameTime / 60);
@@ -383,6 +388,8 @@ export class Game {
 
   _onWin() {
     this.state = 'WIN';
+    this.input.enabled = false;
+    document.exitPointerLock();
     this.hud.hide();
     const mins = Math.floor(this.gameTime / 60);
     const secs = Math.floor(this.gameTime % 60);
