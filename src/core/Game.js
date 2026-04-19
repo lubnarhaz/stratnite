@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import * as CANNON from 'cannon-es';
 import { Engine } from './Engine.js';
 import { Physics } from './Physics.js';
 import { InputManager } from './InputManager.js';
@@ -100,6 +101,15 @@ export class Game {
   }
 
   _initGame(charId) {
+    try {
+      this._doInitGame(charId);
+    } catch (e) {
+      console.error('STRATNITE init error:', e);
+      alert('Erreur de chargement: ' + e.message);
+    }
+  }
+
+  _doInitGame(charId) {
     this.state = 'PLAYING';
     this.input.enabled = true;
     this.gameTime = 0;
@@ -119,7 +129,7 @@ export class Game {
       shape: new CANNON.Plane(),
       material: this.physics.groundMaterial
     });
-    groundBody.quaternion.setFromEulerAngles(-Math.PI / 2, 0, 0);
+    groundBody.quaternion.setFromAxisAngle(new CANNON.Vec3(1, 0, 0), -Math.PI / 2);
     this.physics.addBody(groundBody);
 
     // Storm
@@ -407,6 +417,3 @@ export class Game {
     this.state = 'PAUSED';
   }
 }
-
-// Make CANNON available globally for Game.js usage
-import * as CANNON from 'cannon-es';
