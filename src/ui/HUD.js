@@ -225,7 +225,11 @@ export class HUD {
       // Ammo
       const active = inventory.getActive();
       if (active) {
-        this.elements.ammo.innerHTML = `${active.icon} ${active.currentAmmo >= 0 ? active.currentAmmo : '∞'}`;
+        const ammoText = active.currentAmmo >= 0 ? active.currentAmmo : '∞';
+        const reloading = player && player.isReloading;
+        this.elements.ammo.innerHTML = reloading
+          ? `<span style="color:#ffaa00;">⟳ Rechargement...</span>`
+          : `${active.icon} ${ammoText}`;
         this.elements.ammo.style.opacity = '1';
       } else {
         this.elements.ammo.style.opacity = '0.3';

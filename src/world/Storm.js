@@ -12,6 +12,7 @@ export class Storm {
     this.shrinkSpeed = 0;
     this.damagePerSec = 5;
     this.center = new THREE.Vector3(0, 0, 0);
+    this.targetCenter = new THREE.Vector3(0, 0, 0);
     this.group = new THREE.Group();
 
     // Outer wall
@@ -72,13 +73,28 @@ export class Storm {
         this.shrinking = true;
         this.targetRadius = this.phases[this.currentPhase + 1];
         this.shrinkSpeed = (this.radius - this.targetRadius) / 30; // shrink over 30s
+
+        // Shift center toward a random position (within safe zone bounds)
+        const maxShift = this.targetRadius * 0.3;
+        this.targetCenter = new THREE.Vector3(
+          this.center.x + (Math.random() - 0.5) * maxShift * 2,
+          0,
+          this.center.z + (Math.random() - 0.5) * maxShift * 2
+        );
       }
     }
 
     if (this.shrinking) {
       this.radius -= this.shrinkSpeed * dt;
+
+      // Lerp center toward target
+      this.center.lerp(this.targetCenter, dt * 0.05);
+      this.group.position.x = this.center.x;
+      this.group.position.z = this.center.z;
+
       if (this.radius <= this.targetRadius) {
         this.radius = this.targetRadius;
+        this.center.copy(this.targetCenter);
         this.shrinking = false;
         this.currentPhase++;
         if (this.currentPhase < this.intervals.length) {

@@ -35,6 +35,7 @@ export class Bot extends Character {
     this._originalSpeed = this.speed;
     this.detectionRange = 40 + Math.random() * 20;
     this.accuracy = 0.6 + Math.random() * 0.3;
+    this.pendingProjectiles = [];
   }
 
   update(dt, playerPos, storm, scene) {
@@ -82,8 +83,27 @@ export class Bot extends Character {
       case 'loot':
         if (this.target) {
           this._moveToward(this.target, dt);
+          this.playAnimation('run');
+          // Check if close enough to loot
+          if (this._lootChest && !this._lootChest.opened) {
+            const cPos = this._lootChest.getPosition();
+            const dx = cPos.x - this.body.position.x;
+            const dz = cPos.z - this.body.position.z;
+            const dist = Math.sqrt(dx * dx + dz * dz);
+            if (dist < 3) {
+              const items = this._lootChest.open();
+              for (const item of items) {
+                if (item.dmg && !this.weapon) {
+                  this.equipWeapon(item);
+                  break;
+                }
+              }
+              this.state = 'wander';
+              this.stateTimer = 0;
+            }
+          }
         }
-        if (this.stateTimer > 5) {
+        if (this.stateTimer > 8) {
           this.state = 'wander';
           this.stateTimer = 0;
         }
@@ -109,10 +129,29 @@ export class Bot extends Character {
     this.body.velocity.x = this.wanderDir.x * speed;
     this.body.velocity.z = this.wanderDir.z * speed;
     this.mesh.rotation.y = Math.atan2(this.wanderDir.x, this.wanderDir.z);
+    this.playAnimation('run');
 
     // Stay in bounds
     if (Math.abs(this.body.position.x) > 240 || Math.abs(this.body.position.z) > 240) {
       this.wanderDir.set(-this.body.position.x, 0, -this.body.position.z).normalize();
+    }
+
+    // Unarmed bots seek chests
+    if (!this.weapon && this._nearbyChests) {
+      for (const chest of this._nearbyChests) {
+        if (chest.opened) continue;
+        const cPos = chest.getPosition();
+        const dx = cPos.x - this.body.position.x;
+        const dz = cPos.z - this.body.position.z;
+        const dist = Math.sqrt(dx * dx + dz * dz);
+        if (dist < 30) {
+          this.state = 'loot';
+          this.target = new THREE.Vector3(cPos.x, cPos.y, cPos.z);
+          this._lootChest = chest;
+          this.stateTimer = 0;
+          return;
+        }
+      }
     }
   }
 
@@ -143,6 +182,7 @@ export class Bot extends Character {
 
     // Face player
     this.mesh.rotation.y = Math.atan2(dx, dz);
+    this.playAnimation('shoot');
 
     // Strafe
     const strafeDir = new THREE.Vector3(-dz, 0, dx).normalize();
@@ -161,7 +201,8 @@ export class Bot extends Character {
 
     // Shoot
     if (this.weapon && dist < this.weapon.range) {
-      this._tryShoot(playerPos, scene);
+      const proj = this._tryShoot(playerPos, scene);
+      if (proj) this.pendingProjectiles.push(proj);
     }
   }
 

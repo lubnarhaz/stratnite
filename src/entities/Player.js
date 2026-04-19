@@ -71,9 +71,19 @@ export class Player extends Character {
     this._weaponMesh = null;
     this._currentWeaponId = null;
 
+    // Reload
+    this._reloading = false;
+    this._reloadTimer = 0;
+    this._reloadDuration = 1.5; // seconds
+
     // Animation state tracking
     this._isMoving = false;
     this._isShooting = false;
+
+    // Ability duration timers (game-loop based, not setTimeout)
+    this._radarTimer = 0;
+    this._overclockTimer = 0;
+    this._invincibleTimer = 0;
   }
 
   update(dt, input, camera, terrain) {
@@ -171,6 +181,32 @@ export class Player extends Character {
       this.abilityCooldown -= dt;
     }
 
+    // Reload timer
+    if (this._reloading) {
+      this._reloadTimer -= dt;
+      if (this._reloadTimer <= 0) {
+        this._reloading = false;
+        if (this._reloadWeapon && this._reloadWeapon.ammo > 0) {
+          this._reloadWeapon.currentAmmo = this._reloadWeapon.ammo;
+          this._reloadWeapon = null;
+        }
+      }
+    }
+
+    // Ability duration timers
+    if (this._radarTimer > 0) {
+      this._radarTimer -= dt;
+      if (this._radarTimer <= 0) this._radarActive = false;
+    }
+    if (this._overclockTimer > 0) {
+      this._overclockTimer -= dt;
+      if (this._overclockTimer <= 0) this.overclock = false;
+    }
+    if (this._invincibleTimer > 0) {
+      this._invincibleTimer -= dt;
+      if (this._invincibleTimer <= 0) this.invincible = false;
+    }
+
     // Call parent update
     super.update(dt);
   }
@@ -249,17 +285,17 @@ export class Player extends Character {
       case 'desert':
         // Radar pulse
         this._radarActive = true;
-        setTimeout(() => { this._radarActive = false; }, 5000);
+        this._radarTimer = 5;
         break;
       case 'cyber':
         // Overclock
         this.overclock = true;
-        setTimeout(() => { this.overclock = false; }, 5000);
+        this._overclockTimer = 5;
         break;
       case 'crystal':
         // Invincible
         this.invincible = true;
-        setTimeout(() => { this.invincible = false; }, 3000);
+        this._invincibleTimer = 3;
         break;
     }
   }
@@ -315,6 +351,19 @@ export class Player extends Character {
     } catch (err) {
       console.warn('Failed to load weapon model:', err);
     }
+  }
+
+  reload(weapon) {
+    if (!weapon || this._reloading) return;
+    if (weapon.ammo < 0) return; // infinite ammo (melee)
+    if (weapon.currentAmmo === weapon.ammo) return; // already full
+    this._reloading = true;
+    this._reloadTimer = this._reloadDuration;
+    this._reloadWeapon = weapon;
+  }
+
+  get isReloading() {
+    return this._reloading;
   }
 
   takeDamage(amount) {

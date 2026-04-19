@@ -240,8 +240,8 @@ export class Game {
     if (this.player && this.player.alive) {
       this.player.update(dt, this.input, this.engine.camera, this.map.terrain);
 
-      // Shooting
-      if (this.input.isShooting() && this.input.isPointerLocked()) {
+      // Shooting (blocked during reload)
+      if (this.input.isShooting() && this.input.isPointerLocked() && !this.player.isReloading) {
         const weapon = this.inventory.getActive();
         if (weapon) {
           const result = this.player.shoot(this.engine.scene, weapon, this.bots);
@@ -269,6 +269,12 @@ export class Game {
         this._interactChest();
       }
 
+      // Reload (R key)
+      if (this.input.isDown('KeyR')) {
+        const weapon = this.inventory.getActive();
+        if (weapon) this.player.reload(weapon);
+      }
+
       // Inventory slot keys
       for (let i = 0; i < 5; i++) {
         if (this.input.isDown(`Digit${i + 1}`)) {
@@ -294,11 +300,13 @@ export class Game {
     for (const bot of this.bots) {
       if (!bot.alive) continue;
       const prevAlive = bot.alive;
+      bot._nearbyChests = this.chests;
       bot.update(dt, playerPos, this.storm, this.engine.scene);
 
       // Collect bot projectiles
-      if (bot.weapon && bot.state === 'combat' && playerPos) {
-        // Bot shooting handled internally, projectile returned
+      if (bot.pendingProjectiles.length > 0) {
+        this.projectiles.push(...bot.pendingProjectiles);
+        bot.pendingProjectiles.length = 0;
       }
 
       // Check if bot died

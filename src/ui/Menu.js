@@ -52,6 +52,7 @@ export class Menu {
           <p>Espace — Sauter</p>
           <p>E — Interagir</p>
           <p>F — Capacité spéciale</p>
+          <p>R — Recharger</p>
           <p>1-5 — Changer d'arme</p>
           <p>Molette — Zoom</p>
         </div>
