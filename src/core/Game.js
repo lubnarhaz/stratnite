@@ -62,7 +62,8 @@ export class Game {
         break;
       case 'mainMenu':
         this.input.enabled = false;
-        document.exitPointerLock();
+        this.input.hideTouchControls();
+        if (document.pointerLockElement) document.exitPointerLock();
         this.menu.showScreen('MENU');
         break;
     }
@@ -112,6 +113,7 @@ export class Game {
   _doInitGame(charId) {
     this.state = 'PLAYING';
     this.input.enabled = true;
+    if (this.input.isMobile) this.input.showTouchControls();
     this.gameTime = 0;
 
     // Clear previous
@@ -224,6 +226,9 @@ export class Game {
   }
 
   _update(dt) {
+    // Map (water animation etc)
+    if (this.map) this.map.update(dt);
+
     // Physics
     this.physics.step(dt);
 
@@ -232,7 +237,7 @@ export class Game {
       this.player.update(dt, this.input, this.engine.camera, this.map.terrain);
 
       // Shooting
-      if (this.input.mouseDown && this.input.isPointerLocked()) {
+      if (this.input.isShooting() && this.input.isPointerLocked()) {
         const weapon = this.inventory.getActive();
         if (weapon) {
           const result = this.player.shoot(this.engine.scene, weapon, this.bots);
@@ -383,7 +388,8 @@ export class Game {
   _onPlayerDeath() {
     this.state = 'DEAD';
     this.input.enabled = false;
-    document.exitPointerLock();
+    this.input.hideTouchControls();
+    if (document.pointerLockElement) document.exitPointerLock();
     this.hud.hide();
     const aliveBots = this.bots.filter(b => b.alive).length;
     const mins = Math.floor(this.gameTime / 60);
@@ -399,7 +405,8 @@ export class Game {
   _onWin() {
     this.state = 'WIN';
     this.input.enabled = false;
-    document.exitPointerLock();
+    this.input.hideTouchControls();
+    if (document.pointerLockElement) document.exitPointerLock();
     this.hud.hide();
     const mins = Math.floor(this.gameTime / 60);
     const secs = Math.floor(this.gameTime % 60);

@@ -92,6 +92,13 @@ export class Player extends Character {
     if (input.isDown('KeyA') || input.isDown('ArrowLeft')) moveDir.sub(right);
     if (input.isDown('KeyD') || input.isDown('ArrowRight')) moveDir.add(right);
 
+    // Mobile joystick input
+    const touchDir = input.getTouchMoveDir();
+    if (touchDir && (Math.abs(touchDir.x) > 0.1 || Math.abs(touchDir.y) > 0.1)) {
+      moveDir.add(forward.clone().multiplyScalar(-touchDir.y));
+      moveDir.add(right.clone().multiplyScalar(touchDir.x));
+    }
+
     if (moveDir.lengthSq() > 0) {
       moveDir.normalize();
       const speed = this.speed * 3;

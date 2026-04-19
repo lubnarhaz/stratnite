@@ -1,6 +1,8 @@
 import { Terrain } from './Terrain.js';
 import { Buildings } from './Buildings.js';
 import { Trees } from './Trees.js';
+import { Rocks } from './Rocks.js';
+import { Water } from './Water.js';
 import { Sky } from './Sky.js';
 
 export const ZONES = [
@@ -21,6 +23,8 @@ export class GameMap {
     this.terrain = new Terrain();
     this.buildings = new Buildings(this.terrain, ZONES);
     this.trees = new Trees(this.terrain, ZONES);
+    this.rocks = new Rocks(this.terrain);
+    this.water = new Water();
     this.sky = new Sky();
   }
 
@@ -39,10 +43,16 @@ export class GameMap {
     return closest;
   }
 
+  update(dt) {
+    this.water.update(dt);
+  }
+
   addToScene(scene) {
     this.terrain.addToScene(scene);
+    this.water.addToScene(scene);
     this.buildings.addToScene(scene);
     this.trees.addToScene(scene);
+    this.rocks.addToScene(scene);
     this.sky.addToScene(scene);
   }
 }
