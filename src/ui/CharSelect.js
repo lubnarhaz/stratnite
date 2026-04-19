@@ -1,10 +1,10 @@
 import { CHARACTERS } from '../characters/CharacterData.js';
 
 const SKIN_IMAGES = {
-  arctic: '/skins/Fortnite_Character_Skin_Design__2_.png',
-  desert: '/skins/Fortnite_Character_Skin_Design__1_.png',
-  cyber: '/skins/Fortnite_Character_Skin_Design.png',
-  crystal: '/skins/Fortnite_Fantasy_Armor_Skin.png'
+  arctic: '/skins/arctic.webp',
+  desert: '/skins/desert.webp',
+  cyber: '/skins/cyber.webp',
+  crystal: '/skins/crystal.webp'
 };
 
 export class CharSelect {
